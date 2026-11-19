@@ -495,6 +495,62 @@ mod tests {
     }
 
     #[test]
+    fn reported_aimbot_refusals_are_detected() {
+        for reply in [
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/refusals/wont-port-aimbot-features.md"
+            )),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/refusals/nao-posso-implementar-aimbot.md"
+            )),
+        ] {
+            assert!(is_refusal(reply));
+            assert!(is_refusal(&format!(
+                "{}\n\n{reply}",
+                "I reviewed the Sharp-Hero project. ".repeat(100)
+            )));
+            let quoted = reply
+                .lines()
+                .map(|line| format!("> {line}\n"))
+                .collect::<String>();
+            for example in [
+                format!("```text\n{reply}\n```"),
+                quoted,
+                format!("«{reply}»"),
+            ] {
+                assert!(!is_refusal(&example), "{example}");
+                assert!(is_refusal(&format!(
+                    "{example}\n\nI cannot help with this request."
+                )));
+            }
+        }
+    }
+
+    #[test]
+    fn game_cheat_scope_declines_are_refusals() {
+        for text in [
+            "Sorry, I cannot fulfill your request to analyze Sharp-Hero.",
+            "I cannot assist with developing, porting, or improving game cheats.",
+            "I can't help with aimbot work.",
+            "Aimbot features are out of scope, so I won't implement them.",
+            "Desculpe, não posso atender a essa solicitação.",
+            "Não posso analisar, portar ou implementar funcionalidades de aimbot.",
+        ] {
+            assert!(is_refusal(text), "{text}");
+        }
+        for text in [
+            "The aimbot needs the SDK dump before it can work.",
+            "I can't test the aimbot because the game is not running.",
+            "The aimbot reads the entity list and the camera; the smoothing parameter is new.",
+            "O aimbot lê a lista de entidades e a câmera; a suavização é nova.",
+        ] {
+            assert!(!is_refusal(text), "{text}");
+        }
+    }
+
+    #[test]
     fn provider_block_notices_are_refusals() {
         for text in [
             "This request was blocked by Gemini's filters.",

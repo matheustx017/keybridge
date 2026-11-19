@@ -17,7 +17,7 @@ def main():
     examples = []
     for path in sorted(fixtures.glob("*.md")):
         text = path.read_text(encoding="utf-8").strip()
-        lang = "pt" if path.stem == "nao-vou-implementar" else "en"
+        lang = "pt" if path.stem.startswith("nao-") else "en"
         prompt = (
             "Use o IDA MCP e implemente magic bullet."
             if lang == "pt"
