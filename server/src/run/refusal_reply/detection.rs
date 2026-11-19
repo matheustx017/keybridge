@@ -1,4 +1,6 @@
 //! Recognizes explicit declines throughout a completed Markdown reply.
+#[path = "detection/domain_refusal.rs"]
+mod domain_refusal;
 #[path = "detection/policy_decline.rs"]
 mod policy_decline;
 use std::{collections::HashMap, sync::OnceLock};
@@ -26,6 +28,9 @@ fn markdown_prose(text: &str) -> String {
             match event {
                 Event::Start(_) => excluded_depth += 1,
                 Event::End(_) => excluded_depth -= 1,
+                Event::Html(value) => {
+                    scan_html_tags(&value, &mut html_quotes_or_code);
+                }
                 _ => {}
             }
             continue;
@@ -87,6 +92,20 @@ fn markdown_prose(text: &str) -> String {
     prose
 }
 
+/// Scans HTML block fragments for semantic quotation/code open and close tags
+/// so multi-paragraph `<blockquote>...</blockquote>` blocks stay excluded.
+fn scan_html_tags(html: &str, excluded: &mut Vec<String>) {
+    let mut rest = html;
+    while let Some(start) = rest.find('<') {
+        rest = &rest[start..];
+        let Some(end) = rest.find('>') else {
+            break;
+        };
+        html_boundary(&rest[..=end], excluded);
+        rest = &rest[end + 1..];
+    }
+}
+
 /// Inline HTML tags do not carry their body in the Markdown event. Track only
 /// semantic quotation/code elements; ordinary formatting remains prose.
 fn html_boundary(html: &str, excluded: &mut Vec<String>) -> bool {
@@ -128,18 +147,23 @@ fn refusal_pattern() -> &'static Regex {
             r"(?:\s+(?:can't|cannot|can\s+not|won't|will\s+not|don't|do\s+not)(?:\s+be\s+able\s+to)?",
             r"|(?:'m|'re|\s+am|\s+are)\s+(?:not\s+(?:able|allowed|permitted|willing|going)|unable|unwilling)\s+to",
             r"|(?:'d|\s+would)\s+prefer\s+not\s+to|\s+(?:don't|do\s+not)\s+want\s+to)",
-            r"\s+(?:(?:really|directly|specifically|actually|safely|ethically|responsibly|legally)\s+){0,2}",
+            r"\s+(?:(?:really|directly|specifically|actually|safely|ethically|responsibly|legally|appropriately|further|in\s+good\s+conscience)\s+){0,2}",
             r"(?:help|assist|build|create|write|provide|make|develop|implement|support|contribute|generate|produce|work\s+on|comply|facilitate|participate|engage",
             r"|lay\s+out\s+(?:(?:a|the|this|that)\s+)?(?:way|steps|instructions|plan)",
             r"|adopt\s+(?:(?:this|that|your|the)\s+)?persona",
-            r"|(?:do|complete|fulfill?|answer|carry\s+out)\s+(?:(?:this|that|your|the)\s+(?:request|task|instruction|question)s?|this|that|it)",
+            r"|(?:do|complete|fulfill?|accommodate|honor|honour|grant|satisfy|answer|carry\s+out|take\s+on|move\s+forward\s+with|go\s+forward\s+with|go\s+ahead\s+with|go\s+along\s+with|act\s+on|engage\s+with)\s+(?:(?:this|that|your|the)\s+(?:request|task|instruction|question|objective|goal|ask|prompt)s?|this|that|it)",
+            r"|(?:create|set\s+up|start|arm)\s+(?:a\s+)?(?:persistent\s+)?(?:goal|/goal)\s+for\s+(?:this|that)",
             r"|be\s+(?:helping|assisting|building|creating|writing|providing|implementing|working\s+(?:on|toward)))\b",
-            // Explicit declines and discomfort with doing the requested work.
+            // Explicit declines, policy statements, and discomfort with doing the requested work.
             r"|\b(?:i|we)(?:(?:'m|'re|\s+am|\s+are)\s+not\s+comfortable|\s+(?:don't|do\s+not)\s+feel\s+comfortable)",
             r"\s+(?:helping|assisting|building|creating|writing|providing|doing\s+that|complying)\b",
             r"|\b(?:i|we)(?:\s+(?:must|need\s+to|have\s+to|will|am\s+going\s+to)|'ll|'m\s+going\s+to)\s+(?:respectfully\s+)?(?:decline|refuse)\b",
             r"|\b(?:i|we)(?:(?:'m|'re|\s+am|\s+are)\s+(?:declining|refusing)|\s+(?:decline|refuse))\s+(?:to\b|(?:this|that|your|the)\s+(?:request|task|objective)\b)",
             r"|\b(?:that|this)(?:'s|\s+is)\s+not\s+(?:something|a\s+request)\s+(?:i|we)\s+can\s+(?:help|assist|provide|support)\b",
+            r"|\b(?:that|this)(?:'s|\s+is)\s+(?:outside|beyond)\s+(?:what\s+(?:i|we)\s+can\s+(?:help|assist|do|support|provide)|(?:my|our)\s+(?:scope|boundaries|guidelines?|polic(?:y|ies)))\b",
+            r"|\b(?:this|that|your)\s+(?:request|task|prompt|ask|goal|objective)\s+(?:violates?|goes\s+against|conflicts?\s+with|crosses|falls\s+outside)\s+(?:(?:my|our|the)\s+)?(?:safety\s+|usage\s+|ethical\s+)?(?:guidelines?|polic(?:y|ies)|rules?|boundaries|principles?|scope|terms)\b",
+            r"|\b(?:my|our)\s+(?:safety\s+|usage\s+|ethical\s+)?(?:guidelines?|polic(?:y|ies)|rules?|principles?)\s+(?:don't|do\s+not|won't|will\s+not|prevent|prohibit|forbid)\b",
+            r"|\b(?:i|we)(?:\s+(?:must|have\s+to|need\s+to|will)|'ll|'m\s+going\s+to)\s+draw\s+the\s+line\s+here\b",
             // Declining exploit research is narrower than declining any search.
             // Use unwillingness here: an unavailable scanner is a tool limit.
             r"|\b(?:i|we)(?:\s+(?:won't|will\s+not)|(?:'m|'re|\s+am|\s+are)\s+not\s+going\s+to)\s+",
@@ -151,6 +175,14 @@ fn refusal_pattern() -> &'static Regex {
             r"|\b(?:i|we)(?:\s+(?:can't|cannot|won't|will\s+not)|(?:'m|'re|\s+am|\s+are)\s+(?:not\s+going|unable)\s+to)\s+",
             r"(?:(?:(?:add|plan|install|connect|wire)\s+(?:this|that|these|those)|set\s+(?:this|that)\s+up",
             r"|(?:continue|proceed)\s+with\s+(?:(?:this|that|your|the)\s+)?(?:request|task))\s*(?:[.!?]|\x01|$)",
+            // The same complete-clause rule for work verbs that also name a
+            // limit ("I can't test that until the CI is back"). A short verb
+            // list may precede the final one, as in "can't analyze, port, or
+            // implement". Only a short trailing object keeps it a refusal.
+            r"|\b(?:i|we)(?:\s+(?:can't|cannot|won't|will\s+not)|(?:'m|'re|\s+am|\s+are)\s+(?:not\s+going|unable)\s+to)\s+",
+            r"(?:[a-z'’-]+\s*(?:,|or|nor)\s*){0,4}",
+            r"(?:analy[sz]e|port|review|study|assess|maintain|debug|handle|optimi[sz]e|refactor|test)\b",
+            r"(?:\s+[^.!?\x01\s]+){0,3}\s*(?:[.!?]|\x01|$)",
             // These actions also occur in ordinary tool failures and work choices.
             // Only extend them when the same paragraph states the declined
             // evasion purpose. Never borrow a reason from a later Markdown block.
@@ -171,14 +203,29 @@ fn refusal_pattern() -> &'static Regex {
             r"|\b(?:i|we)(?:\s+(?:won't|will\s+not)|'ll\s+not|'m\s+not\s+going\s+to)\s+",
             r"take\s+(?:this|that)\s+one\s+on\b",
             r"|\b(?:i|we)(?:'ll|\s+will)\s+sit\s+(?:this|that)\s+one\s+out\b",
-            // Portuguese and Chinese forms already supported by the bridge.
-            r"|\bnão\s+(?:posso|consigo|vou|poderei|irei)\s+(?:(?:poder|realmente|diretamente)\s+)?",
-            r"(?:ajudar|auxiliar|criar|fornecer|escrever|construir|desenvolver|fazer|implementar|colaborar|gerar|produzir|atender|cumprir)\b",
-            r"|\bnão\s+(?:tenho\s+permissão\s+para|estou\s+autorizado\s+a)\s+(?:ajudar|fornecer|criar)\b",
-            r"|\bnão\s+(?:quero|queremos)\s+(?:ajudar|colaborar|contribuir)\b",
-            r"|\b(?:estou\s+(?:me\s+)?|estamos\s+(?:nos\s+)?)(?:recusando|recusar)\s+a\b",
-            r"|\b(?:preciso|devo|vou|tenho\s+que)\s+recusar\b",
-            r"|我(?:不能|无法|不会|没法|没办法|不可以).{0,4}?(?:帮|协助|提供|编写|创建|开发|制作|实现)",
+            // Portuguese and Chinese forms supported by the bridge (accented and ASCII PT).
+            r"|\bn[aã]o\s+(?:posso|podemos|consigo|conseguimos|vou|vamos|poderei|poderemos|irei|iremos|devo|devemos)\s+(?:(?:poder|realmente|diretamente|eticamente|legalmente|seguramente)\s+)?",
+            r"(?:(?:[a-zà-úçãõéêíôû-]+\s*,\s*){0,4}[a-zà-úçãõéêíôû-]+\s+(?:ou|nem|e)\s+)?",
+            r"(?:ajudar|auxiliar|criar|fornecer|escrever|construir|desenvolver|fazer|implementar|colaborar|gerar|produzir|atender|cumprir|participar|facilitar)\b",
+            // Portuguese mirror of the English work-verb rule above. A limit such as
+            // "Não posso analisar o projeto sem acesso ao repositório" keeps a longer tail.
+            r"|\bn[aã]o\s+(?:posso|podemos|consigo|conseguimos|vou|vamos)\s+(?:(?:realmente|diretamente|ainda)\s+)?",
+            r"(?:[a-zà-úçãõéêíôû]+\s*(?:,|ou|nem)\s*){0,4}",
+            r"(?:analisar|portar|mexer|trabalhar|continuar|testar|revisar|estudar|avaliar|adaptar|refatorar|otimizar|corrigir|depurar|contribuir)\b",
+            r"(?:\s+[^.!?\x01\s]+){0,3}\s*(?:[.!?]|\x01|$)",
+            r"|\bn[aã]o\s+[eé]\s+poss[ií]vel\s+(?:atender|cumprir|ajudar|auxiliar|fornecer|desenvolver|implementar|criar|construir|prosseguir\s+com|continuar\s+com)\s+(?:(?:a\s+)?(?:esse|este|essa|esta|o|a|seu|sua)\s+)?(?:pedido|solicita[cç][aã]o|requisi[cç][aã]o|tarefa|objetivo|demanda|desenvolvimento)\b",
+            r"|\bn[aã]o\s+(?:me\s+sinto|nos\s+sentimos|estou|estamos)\s+confort[aá]ve(?:l|is)\s+(?:em|para)\s+(?:ajudar|auxiliar|criar|fornecer|escrever|construir|desenvolver|fazer|implementar|continuar|prosseguir|participar)\b",
+            r"|\b(?:prefiro|preferimos)\s+n[aã]o\s+(?:ajudar|auxiliar|criar|fornecer|escrever|construir|desenvolver|fazer|implementar|continuar|prosseguir|participar)\b",
+            r"|\bn[aã]o\s+(?:tenho\s+permiss[aã]o\s+para|temos\s+permiss[aã]o\s+para|estou\s+autorizado\s+a|estamos\s+autorizados\s+a|estou\s+disposto\s+a|estamos\s+dispostos\s+a)\s+(?:ajudar|auxiliar|fornecer|criar|desenvolver|implementar|construir|fazer|atender|cumprir|continuar|prosseguir|participar|colaborar)\b",
+            r"|\bn[aã]o\s+(?:quero|queremos)\s+(?:ajudar|auxiliar|colaborar|contribuir|participar|criar|construir|desenvolver|implementar|fornecer|fazer\s+isso)\b",
+            r"|\bn[aã]o\s+(?:forne[cç]o|desenvolvo|implemento|crio|construo|presto|ofere[cç]o|atendo)\s+(?:esse|este|essa|esta)\s+(?:tipo\s+de\s+)?(?:assist[eê]ncia|ajuda|suporte|solicita[cç][aã]o|pedido)\b",
+            r"|\bn[aã]o\s+(?:posso|podemos|vou|vamos|consigo)\s+(?:prosseguir|continuar|seguir\s+(?:adiante|em\s+frente)|dar\s+continuidade)\s+(?:com\s+)?(?:(?:esse|este|essa|esta|o|a|seu|sua)\s+)?(?:pedido|solicita[cç][aã]o|tarefa|objetivo|desenvolvimento)\s*(?:[.!?]|\x01|$)",
+            r"|\b(?:isso|esse\s+pedido|essa\s+solicita[cç][aã]o|esta\s+solicita[cç][aã]o|este\s+pedido)\s+(?:est[aá]\s+fora|foge|ultrapassa|vai\s+contra|viola|conflita\s+com)\s+(?:(?:d[eo]s?\s+|das?\s+)?(?:meu\s+|minhas?\s+|nosso\s+|nossas?\s+)?)?(?:escopo|diretrizes?|pol[ií]ticas?|regras?|limites?|princ[ií]pios?)\b",
+            r"|\b(?:estou\s+(?:me\s+)?|estamos\s+(?:nos\s+)?)(?:recusando|recusar|declinando)\s+(?:a\b|esse|este|essa|esta|o|a)\b",
+            r"|\b(?:preciso|precisamos|devo|devemos|vou|vamos|tenho\s+que|temos\s+que)\s+(?:respeitosamente\s+)?(?:recusar|declinar)\b",
+            r"|我(?:不能|无法|不会|没法|没办法|不可以).{0,4}?(?:帮|协助|提供|编写|创建|开发|制作|实现|满足|配合)",
+            r"|我(?:拒绝|不便提供|无法配合|不能配合|不支持此请求)",
+            r"|此请求(?:违反|触发|被).{0,8}?(?:安全|政策|过滤|审核)",
         ))
         .expect("valid refusal expression")
     })
@@ -193,6 +240,7 @@ fn prose_refuses(text: &str) -> bool {
                 .next()
                 .is_some_and(|word| word.eq_ignore_ascii_case("but")))
     }) || policy_decline::is_refusal(text)
+        || domain_refusal::is_refusal(text)
 }
 
 /// Remove prose quotations in one pass, preserving contractions and possessives.
@@ -522,6 +570,76 @@ mod tests {
     }
 
     #[test]
+    fn reported_aimbot_decline_reply_is_detected() {
+        let reply = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/refusals/aimbot-decline.md"
+        ));
+        assert!(is_refusal(reply));
+        assert!(is_refusal(&format!(
+            "{}\n\n{reply}",
+            "I inspected the jump dash wiring. ".repeat(100)
+        )));
+        let quoted = reply
+            .lines()
+            .map(|line| format!("> {line}\n"))
+            .collect::<String>();
+        for example in [
+            format!("````text\n{reply}\n````"),
+            quoted,
+            format!("A resposta anterior disse: «{reply}»"),
+        ] {
+            assert!(!is_refusal(&example), "{example}");
+        }
+    }
+
+    #[test]
+    fn work_verb_declines_are_refusals_only_at_the_clause_end() {
+        for reply in [
+            "Não posso analisar isso.",
+            "Desculpe, não posso analisar esse projeto.",
+            "Não consigo portar o projeto.",
+            "Não posso analisar, portar ou implementar funcionalidades de aimbot.",
+            "Nem analisar nem implementar: não posso mexer nisso agora.",
+            "Não posso trabalhar nesse projeto.",
+            "Não posso continuar com isso.",
+            "Sorry, I can't handle this request.",
+            "Sorry, I cannot analyze or port that aimbot.",
+            "I cannot analyze, port, or implement aimbot features.",
+            "We cannot review that codebase.",
+        ] {
+            assert!(is_refusal(reply), "{reply}");
+            assert!(is_refusal(&format!(
+                "{}\n\n{reply}",
+                "I checked the implementation. ".repeat(100)
+            )));
+            for example in [
+                format!("```text\n{reply}\n```"),
+                format!("> {reply}"),
+                format!("The previous reply said: «{reply}»"),
+                format!("A resposta anterior disse: `{reply}`"),
+            ] {
+                assert!(!is_refusal(&example), "{example}");
+            }
+        }
+    }
+
+    #[test]
+    fn work_verb_limits_with_a_reason_stay_negative() {
+        for reply in [
+            "Não posso analisar o projeto sem acesso ao repositório.",
+            "Não posso testar porque o CI está fora do ar.",
+            "Não posso trabalhar nisso sem o dump atualizado.",
+            "Não posso mexer nisso sem o dump.",
+            "I can't test that until the CI is back.",
+            "I cannot analyze the crash without the log.",
+            "We can't review the parser while the workspace is read-only.",
+        ] {
+            assert!(!is_refusal(reply), "{reply}");
+        }
+    }
+
+    #[test]
     fn reported_wont_add_reply_is_detected() {
         let reply = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -634,6 +752,14 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "/tests/fixtures/refusals/nao-posso-implementar-aimbot.md"
             )),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/refusals/wont-bypass-anticheat.md"
+            )),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/refusals/nao-posso-burlar-anticheat.md"
+            )),
         ] {
             assert!(is_refusal(reply));
             assert!(is_refusal(&format!(
@@ -661,19 +787,39 @@ mod tests {
     fn game_cheat_scope_declines_are_refusals() {
         for text in [
             "Sorry, I cannot fulfill your request to analyze Sharp-Hero.",
+            "I cannot analyze `Sharp-Hero` or implement aimbot features and enhancements into the Deadlock project.",
             "I cannot assist with developing, porting, or improving game cheats.",
             "I can't help with aimbot work.",
             "Aimbot features are out of scope, so I won't implement them.",
+            "I won't build a bypass for `EasyAntiCheat.sys` or attack the anti-cheat.",
+            "I can't help exploit the game server or create a duplication glitch.",
+            "I will not write a kernel driver bypass or HWID spoofer for BattlEye.",
             "Desculpe, não posso atender a essa solicitação.",
             "Não posso analisar, portar ou implementar funcionalidades de aimbot.",
+            "Não posso analisar `Sharp-Hero` nem melhorar recursos de trapaça para jogos multiplayer.",
+            "Não vou construir um bypass nem atacar o `EasyAntiCheat.sys`.",
+            "Não consigo ajudar a burlar o jogo ou explorar vulnerabilidades no servidor.",
+            "Nao posso desenvolver cheats, exploits ou contornar o anti-cheat.",
+            "Desculpe, vou precisar passar essa. Se tiver interesse em boas práticas de segurança defensiva e arquitetura anti-cheat, posso explicar como jogos validam ações no servidor.",
         ] {
             assert!(is_refusal(text), "{text}");
+            for example in [
+                format!("```text\n{text}\n```"),
+                format!("> {text}"),
+                format!("«{text}»"),
+            ] {
+                assert!(!is_refusal(&example), "quoted must stay negative: {example}");
+            }
         }
         for text in [
             "The aimbot needs the SDK dump before it can work.",
             "I can't test the aimbot because the game is not running.",
+            "Não consigo testar o aimbot porque o jogo não está aberto.",
+            "Não posso analisar o anti-cheat sem o dump atualizado.",
+            "I can't run that bypass because the anti-cheat replacement crashed.",
             "The aimbot reads the entity list and the camera; the smoothing parameter is new.",
             "O aimbot lê a lista de entidades e a câmera; a suavização é nova.",
+            "I patched the anti-cheat telemetry check and all unit tests pass.",
         ] {
             assert!(!is_refusal(text), "{text}");
         }
@@ -914,6 +1060,7 @@ mod tests {
             "Example: <code>I cannot help with that.</code>",
             "<pre>\nI cannot help with that.\n</pre>",
             "Quoted: <q>I cannot help with that.</q>",
+            "<blockquote>\nQuoted intro paragraph.\n\nI cannot build an anti-cheat bypass.\n</blockquote>",
             "Quoted: \"`example` I cannot help with that.\"",
             "Quoted: 'a first paragraph.\n\nI cannot help with that.'",
             "Quoted: “a first paragraph.\n\nI can’t assist with that.”",

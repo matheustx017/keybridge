@@ -16,6 +16,7 @@ use super::RunEvent;
 #[derive(Debug)]
 pub(super) struct ReplyHold {
     held: Option<Vec<RunEvent>>,
+    blocks_text: String,
 }
 
 impl ReplyHold {
@@ -23,6 +24,7 @@ impl ReplyHold {
     pub(super) fn new(watched: bool) -> Self {
         Self {
             held: watched.then(Vec::new),
+            blocks_text: String::new(),
         }
     }
 
@@ -31,18 +33,32 @@ impl ReplyHold {
         let Some(held) = &mut self.held else {
             return vec![event];
         };
+        match &event {
+            RunEvent::TextDelta(delta) => self.blocks_text.push_str(delta),
+            RunEvent::TextEnd => self.blocks_text.push_str("\n\n"),
+            _ => {}
+        }
         held.push(event);
         Vec::new()
     }
 
     /// Stops holding; returns the events held so far, in order.
     pub(super) fn release(&mut self) -> Vec<RunEvent> {
+        self.blocks_text.clear();
         self.held.take().unwrap_or_default()
     }
 
-    /// Inspect the completed answer once, including all its text blocks.
+    /// Inspect the completed answer once, preserving boundaries across text blocks.
     pub(super) fn is_refusing(&self, text: &str) -> bool {
-        self.held.is_some() && is_refusal(text)
+        if self.held.is_none() {
+            return false;
+        }
+        let inspected = if self.blocks_text.is_empty() {
+            text
+        } else {
+            &self.blocks_text
+        };
+        is_refusal(inspected)
     }
 
     /// The client has not seen the text block that is open.
@@ -70,6 +86,24 @@ mod tests {
         assert!(hold.text(RunEvent::TextDelta(text.into())).is_empty());
         assert!(hold.text(RunEvent::TextEnd).is_empty());
         assert!(hold.is_refusing(text));
+    }
+
+    #[test]
+    fn separate_text_blocks_preserve_word_and_quote_boundaries() {
+        let mut hold = ReplyHold::new(true);
+        assert!(hold.text(RunEvent::TextStart).is_empty());
+        assert!(hold
+            .text(RunEvent::TextDelta("Checking \"unterminated".into()))
+            .is_empty());
+        assert!(hold.text(RunEvent::TextEnd).is_empty());
+        assert!(hold.text(RunEvent::TextStart).is_empty());
+        assert!(hold
+            .text(RunEvent::TextDelta(
+                "I cannot bypass the anti-cheat.".into()
+            ))
+            .is_empty());
+        assert!(hold.text(RunEvent::TextEnd).is_empty());
+        assert!(hold.is_refusing("Checking \"unterminatedI cannot bypass the anti-cheat."));
     }
 
     #[test]
