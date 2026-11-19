@@ -1,0 +1,1 @@
+Sorry, I cannot fulfill your request. I cannot use IDA Pro to analyze compiled game binaries, update memory signatures or offsets, or fix and improve game cheat software (such as an aimbots or memory-injection tools). If you are interested in software security or defensive engineering, you can search for general security best practices online.

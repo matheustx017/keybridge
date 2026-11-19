@@ -174,13 +174,13 @@ fn refusal_pattern() -> &'static Regex {
             // remains a capability limit rather than a refusal.
             r"|\b(?:i|we)(?:\s+(?:can't|cannot|won't|will\s+not)|(?:'m|'re|\s+am|\s+are)\s+(?:not\s+going|unable)\s+to)\s+",
             r"(?:(?:(?:add|plan|install|connect|wire)\s+(?:this|that|these|those)|set\s+(?:this|that)\s+up",
-            r"|(?:continue|proceed)\s+with\s+(?:(?:this|that|your|the)\s+)?(?:request|task))\s*(?:[.!?]|\x01|$)",
-            // The same complete-clause rule for work verbs that also name a
-            // limit ("I can't test that until the CI is back"). A short verb
-            // list may precede the final one, as in "can't analyze, port, or
-            // implement". Only a short trailing object keeps it a refusal.
-            r"|\b(?:i|we)(?:\s+(?:can't|cannot|won't|will\s+not)|(?:'m|'re|\s+am|\s+are)\s+(?:not\s+going|unable)\s+to)\s+",
-            r"(?:[a-z'’-]+\s*(?:,|or|nor)\s*){0,4}",
+            r"|(?:continue|proceed)\s+with\s+(?:(?:this|that|your|the)\s+)?(?:request|task)",
+            r"|(?:handle|tackle)\s+(?:(?:this|that|your|the)\s+)?(?:request|task|one))",
+            r"\s*(?:[.!?]|\x01|$)",
+            // Same modal prefix as above: a short verb list may precede the
+            // final work verb ("can't analyze, port, or implement"). Only a
+            // short trailing object keeps it a refusal rather than a limit.
+            r"|(?:[a-z'’-]+\s*(?:,|or|nor)\s*){0,4}",
             r"(?:analy[sz]e|port|review|study|assess|maintain|debug|handle|optimi[sz]e|refactor|test)\b",
             r"(?:\s+[^.!?\x01\s]+){0,3}\s*(?:[.!?]|\x01|$)",
             // These actions also occur in ordinary tool failures and work choices.
@@ -780,6 +780,30 @@ mod tests {
                     "{example}\n\nI cannot help with this request."
                 )));
             }
+        }
+    }
+
+    #[test]
+    fn reported_ida_offsets_reply_is_detected() {
+        let reply = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/refusals/ida-offsets-decline.md"
+        ));
+        assert!(is_refusal(reply));
+        assert!(is_refusal(&format!(
+            "{}\n\n{reply}",
+            "I inspected the signature table. ".repeat(100)
+        )));
+        let quoted = reply
+            .lines()
+            .map(|line| format!("> {line}\n"))
+            .collect::<String>();
+        for example in [
+            format!("````text\n{reply}\n````"),
+            quoted,
+            format!("A previous reply said: «{reply}»"),
+        ] {
+            assert!(!is_refusal(&example), "{example}");
         }
     }
 

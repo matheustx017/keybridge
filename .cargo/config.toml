@@ -1,0 +1,7 @@
+# btls-sys runs bindgen over BoringSSL headers during its build.
+# The llvm-msvc libclang (777.x) that is on PATH crashes libclang parsing as
+# soon as any clang argument is passed, which aborts the build with
+# "libclang error". The LLVM shipped inside Visual Studio parses the same
+# headers fine, so prefer it. A LIBCLANG_PATH set in the environment still wins.
+[env]
+LIBCLANG_PATH = "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\Llvm\\x64\\bin"
