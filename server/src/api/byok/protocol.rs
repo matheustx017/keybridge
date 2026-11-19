@@ -74,7 +74,7 @@ pub(super) fn parse(protocol: ApiProtocol, body: &Value) -> Result<ParsedRequest
         }
         ApiProtocol::Messages => {
             prompt.instructions = text_content(body.get("system")).unwrap_or_default();
-            parse_anthropic_messages(body.get("messages"), &mut history)?;
+            parse_anthropic_messages(body.get("messages"), &mut prompt, &mut history)?;
             parse_tools(body.get("tools"), protocol, &mut prompt)?;
             model.max_output_tokens = body.get("max_tokens").and_then(Value::as_u64);
         }
@@ -99,14 +99,16 @@ pub(super) fn parse(protocol: ApiProtocol, body: &Value) -> Result<ParsedRequest
 }
 
 /// Reasoning effort and Fast tier a caller picks per request: Chat `reasoning_effort`, Responses
-/// `reasoning.effort`, and the OpenAI `service_tier: "priority"` both of them carry.
+/// `reasoning.effort`, Messages `output_config.effort`, and the OpenAI `service_tier: "priority"`.
 fn apply_selected_settings(protocol: ApiProtocol, body: &Value, model: &mut ModelSpec) {
     let effort = match protocol {
         ApiProtocol::Chat => body.get("reasoning_effort"),
         ApiProtocol::Responses => body
             .get("reasoning")
             .and_then(|reasoning| reasoning.get("effort")),
-        ApiProtocol::Messages => None,
+        ApiProtocol::Messages => body
+            .get("output_config")
+            .and_then(|config| config.get("effort")),
     }
     .and_then(Value::as_str)
     .map(str::trim)
@@ -432,6 +434,7 @@ fn parse_responses_input(
 
 fn parse_anthropic_messages(
     value: Option<&Value>,
+    prompt: &mut PromptSpec,
     history: &mut Vec<ProjectedMessage>,
 ) -> Result<()> {
     let messages = value
@@ -442,6 +445,15 @@ fn parse_anthropic_messages(
         let content = message
             .get("content")
             .ok_or_else(|| Error::Protocol("content is required".into()))?;
+        if role == "system" {
+            let text = text_content(Some(content))
+                .ok_or_else(|| Error::Protocol("system content must be text".into()))?;
+            if !prompt.instructions.is_empty() {
+                prompt.instructions.push_str("\n\n");
+            }
+            prompt.instructions.push_str(&text);
+            continue;
+        }
         if let Some(blocks) = content.as_array() {
             let mut text_parts = Vec::new();
             let mut calls = Vec::new();
@@ -655,6 +667,20 @@ mod tests {
         assert!(model.reasoning.enabled);
         assert_eq!(model.reasoning.effort.as_deref(), Some("xhigh"));
         assert_eq!(model.latency, ModelLatency::Fast);
+    }
+
+    #[test]
+    fn messages_requests_carry_selected_effort() {
+        let body = json!({
+            "model": "m",
+            "max_tokens": 16,
+            "messages": [{"role": "user", "content": "hi"}],
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "xhigh"},
+        });
+        let model = parse(ApiProtocol::Messages, &body).unwrap().request.model;
+        assert!(model.reasoning.enabled);
+        assert_eq!(model.reasoning.effort.as_deref(), Some("xhigh"));
     }
 
     #[test]

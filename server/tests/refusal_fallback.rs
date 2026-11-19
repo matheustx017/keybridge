@@ -108,6 +108,10 @@ async fn reported_refusals_switch_with_the_refusal_models_own_settings() {
         include_str!("fixtures/refusals/wont-add-or-spoof.md"),
         include_str!("fixtures/refusals/wont-port-aimbot-features.md"),
         include_str!("fixtures/refusals/nao-posso-implementar-aimbot.md"),
+        include_str!("fixtures/refusals/did-not-start-policy.md"),
+        include_str!("fixtures/refusals/did-not-run-policy.md"),
+        include_str!("fixtures/refusals/stopped-before-launching-policy.md"),
+        include_str!("fixtures/refusals/reason-before-stopping-policy.md"),
     ] {
         for saved_effort in [Some("high"), None] {
             verify_refusal(saved_effort, Some(reply)).await;
@@ -125,6 +129,17 @@ async fn garak_discovered_refusals_switch_with_the_refusal_models_own_settings()
     ] {
         for saved_effort in [Some("high"), None] {
             verify_refusal(saved_effort, Some(reply)).await;
+        }
+    }
+}
+
+#[tokio::test]
+async fn live_refusals_switch_with_the_refusal_models_own_settings() {
+    let replies: Value =
+        serde_json::from_str(include_str!("fixtures/refusals/live-policy-refusals.json")).unwrap();
+    for reply in replies.as_array().unwrap() {
+        for effort in [Some("high"), None] {
+            verify_refusal(effort, Some(reply["text"].as_str().unwrap())).await;
         }
     }
 }
