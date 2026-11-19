@@ -102,7 +102,7 @@ fn en_stance() -> &'static Regex {
             r"(?:(?:[a-z'’-]+\s*,\s*){0,4}[a-z'’-]+\s+(?:or|nor|and)\s+)?",
             r"(?:help|assist|support|contribute|participate|engage|work\s+on|build|create|construct|write|code|program|develop|implement|design|craft|make|generate|produce|provide|supply|offer|share|give|deliver",
             r"|analy[sz]e|inspect|examine|review|study|research|investigate|explore|probe|hunt\s+for|search\s+for|look\s+for|find|locate|identify|map|trace|diff|dump|extract|decompile|disassemble|reverse(?:[- ]?engineer)?",
-            r"|port|adapt|replicate|clone|copy|improve|enhance|extend|expand|upgrade|optimi[sz]e|refine|modify|alter|update|edit|change|refactor|maintain|debug|fix|add|wire|integrate|set\s+up|configure|plan|handle|tackle|pursue|touch|mess\s+with|take\s+on",
+            r"|port|adapt|replicate|clone|copy|improve|enhance|extend|expand|upgrade|optimi[sz]e|refine|modify|alter|update|edit|change|refactor|maintain|debug|fix|repair|add|wire|integrate|set\s+up|configure|plan|handle|tackle|pursue|touch|mess\s+with|take\s+on",
             r"|bypass|circumvent|evade|avoid|defeat|disable|neutrali[sz]e|strip|remove|patch|hook|inject|manual[- ]?map|spoof|mask|hide|conceal|obfuscate|disguise|tamper|manipulate|attack|target|exploit|abuse|weaponiz(?:e|ing)|crack|break|weaken|subvert|undermine|automate|override|intercept|emulate|forge|fabricate",
             r"|use|run|operate|launch|start|execute|test|continue|proceed|move\s+forward|go\s+forward|go\s+ahead|explain\s+how\s+to|show\s+(?:you\s+)?how\s+to|guide\s+(?:you\s+)?(?:on|through)|walk\s+(?:you\s+)?through",
             r"|fulfill?|accommodate|honor|honour|grant|do|complete|carry\s+out",
@@ -132,12 +132,12 @@ fn pt_stance() -> &'static Regex {
             r"(?:(?:[a-zà-úçãõéêíôû-]+\s*,\s*){0,4}[a-zà-úçãõéêíôû-]+\s+(?:ou|nem|e)\s+)?",
             r"(?:ajudar|auxiliar|apoiar|suportar|colaborar|contribuir|participar|trabalhar|mexer|criar|construir|desenvolver|implementar|fazer|escrever|programar|gerar|produzir|fornecer|oferecer|compartilhar|entregar|explicar\s+como|mostrar\s+como|ensinar(?:\s+a)?",
             r"|analisar|inspecionar|examinar|revisar|estudar|pesquisar|investigar|explorar|sondar|buscar|procurar|encontrar|localizar|identificar|mapear|rastrear|extrair|descompilar|desmontar|fazer\s+engenharia\s+reversa",
-            r"|portar|adaptar|replicar|copiar|melhorar|aprimorar|estender|expandir|otimizar|refinar|modificar|alterar|atualizar|editar|refatorar|manter|depurar|corrigir|adicionar|integrar|configurar|planejar|lidar|assumir",
+            r"|portar|adaptar|replicar|copiar|melhorar|aprimorar|estender|expandir|otimizar|refinar|modificar|alterar|atualizar|editar|refatorar|manter|depurar|corrigir|reparar|adicionar|integrar|configurar|planejar|lidar|assumir",
             r"|burlar|contornar|driblar|evadir|evitar|derrotar|vencer|desativar|desabilitar|neutralizar|remover|patchear|hookar|ganchar|injetar|mascarar|ocultar|esconder|ofuscar|disfar[cç]ar|simular|falsificar|forjar|adulterar|manipular|atacar|alvejar|abusar|quebrar|crackear|enfraquecer|subverter|automatizar|interceptar|emular",
             r"|usar|rodar|executar|operar|iniciar|testar|continuar|prosseguir|seguir\s+(?:com|adiante)|dar\s+continuidade|atender|cumprir)\b",
             // Portuguese present-habitual policy refusals ("Não desenvolvo cheats", "Não burlo anti-cheat").
             r"|\b(?:eu\s+|n[oó]s\s+)?n[aã]o\s+(?:ajudo|auxilio|apoio|suporto|colaboro|contribuo|participo|trabalho|mexo|crio|construo|desenvolvo|implemento|fa[cç]o|escrevo|gero|produzo|forne[cç]o|ofere[cç]o|presto|realizo|atendo|rolo|rola",
-            r"|analiso|estudo|pesquiso|investigo|exploro|porto|adapto|melhoro|aprimoro|modifico|altero|otimizo|burlo|contorno|evado|desativo|desabilito|neutralizo|ataco|injeto|patcheio|crackeio|quebro|adultero|manipulo|automatizo|ofusco|disfar[cç]o|mascaro|falsifico|forjo)\b",
+            r"|analiso|estudo|pesquiso|investigo|exploro|porto|adapto|melhoro|aprimoro|modifico|altero|otimizo|reparo|burlo|contorno|evado|desativo|desabilito|neutralizo|ataco|injeto|patcheio|crackeio|quebro|adultero|manipulo|automatizo|ofusco|disfar[cç]o|mascaro|falsifico|forjo)\b",
             // Explicit Portuguese refusal verbs ("Me recuso a...", "Prefiro não...", "Vou recusar...").
             r"|\b(?:(?:eu\s+|n[oó]s\s+)?(?:me\s+recuso|nos\s+recusamos|recuso|recusamos|declino|declinamos)|(?:estou|estamos)\s+(?:me\s+|nos\s+)?(?:recusando|declinando)|(?:preciso|precisamos|devo|devemos|vou|vamos|tenho\s+que|temos\s+que)\s+(?:respeitosamente\s+)?(?:recusar|declinar)|(?:prefiro|preferimos)\s+n[aã]o)\b",
             // Portuguese contrastive partial refusal ("Posso explicar ..., mas não vou/posso ...").
@@ -216,16 +216,21 @@ fn domain_target() -> &'static Regex {
             // A decline to analyze binaries or update signatures/offsets still targets
             // game tampering when it never says "cheat" or "anti-cheat".
             r"|\b(?:ida(?:\s+pro)?|ghidra|x64dbg|binary\s+ninja|radare2|cheat\s+engine|reclass(?:\.net)?|il2cpp\s?dumper|dump(?:er)?[- ]?7)\b",
-            r"|\b(?:game|compiled|retail|client|target)\s+(?:binar(?:y|ies)|executables?|images?|builds?)\b",
+            r"|\b(?:ida(?:\s+pro)?|ghidra)\s+mcp\b",
+            r"|\bmcp\s+(?:do\s+|de\s+|of\s+|from\s+)?(?:ida(?:\s+pro)?|ghidra)\b",
+            r"|\b(?:game|compiled|retail|client|target|third[- ]party)\s+(?:binar(?:y|ies)|executables?|images?|builds?)\b",
+            r"|\breverse[- ]engineer(?:ing)?\s+(?:(?:of|on|for)\s+)?(?:(?:the\s+|a\s+|an\s+|this\s+|that\s+)?(?:third[- ]party\s+)?)?(?:game\s+)?(?:binar(?:y|ies)|executables?|clients?|builds?|software)\b",
             r"|\b(?:game|memory|binary|module|pattern|struct|vtable)\s+(?:signatures?|offsets?)\b",
+            r"|\b(?:signatures?|offsets?|hero\s+names?|nomes?\s+de\s+her[oó]is?)\s*(?:,\s*(?:[a-zà-úçãõéêíôû'-]+\s+){0,2}(?:signatures?|offsets?|hero\s+names?|nomes?\s+de\s+her[oó]is?|names?|nomes?)){0,4}\s*,?\s+(?:and|or|e|ou)\s+(?:(?:the\s+|os?\s+|as?\s+)?(?:broken\s+|quebradas?\s+|missing\s+|stale\s+|memory\s+|game\s+)?)?(?:signatures?|offsets?|hero\s+names?|assinaturas?|nomes?\s+de\s+her[oó]is?)\b",
             r"|\b(?:signatures?|offsets?)\s+(?:and|or|,)\s+(?:signatures?|offsets?)\b",
-            r"|\b(?:recover|resolve|maintain|update|fix)\s+(?:the\s+)?(?:offsets?|signature\s+scan|signature\s+scans)\b",
-            r"|\bmemory[- ]injection\b",
-            r"|\b(?:bin[aá]rios?|execut[aá]veis?)\s+(?:compilados?|do\s+jogo)\b",
+            r"|\b(?:recover|resolve|maintain|update|fix|repair|extract|reparar|extrair|atualizar|corrigir)\s+(?:(?:the\s+|os?\s+|as?\s+)?(?:broken\s+|quebradas?\s+|missing\s+|stale\s+)?)?(?:offsets?|signatures?|assinaturas?|signature\s+scan|signature\s+scans)\b",
+            r"|\b(?:extract|repair|fix|update|reparar|extrair)\s+or\s+(?:extract|repair|fix|update|reparar|extrair)\s+(?:(?:the\s+|os?\s+|as?\s+)?(?:broken\s+|quebradas?\s+)?)?(?:signatures?|offsets?|assinaturas?)\b",
+            r"|\bmemory[- ](?:injection|manipulation)\b",
+            r"|\b(?:manipula[cç][aã]o|adultera[cç][aã]o)\s+de\s+mem[oó]ria\b",
+            r"|\b(?:bin[aá]rios?|execut[aá]veis?)\s+(?:compilados?|do\s+jogo|de\s+terceiros?)\b",
             r"|\b(?:assinaturas?|offsets?)\s+(?:de\s+)?(?:mem[oó]ria|bin[aá]rio|m[oó]dulo)\b",
             r"|\binje[cç][aã]o\s+de\s+mem[oó]ria\b",
-           // 7. Chinese game-cheat / exploit / anti-cheat / bypass terms.
-
+            // 7. Chinese game-cheat / exploit / anti-cheat / bypass terms.
             r"|(?:外挂|作弊|自瞄|透视|锁头|无后座|穿墙|加速挂|绕过|反作弊|过检测|漏洞利用|攻击反作弊|内存修改|注入器|驱动绕过)",
         ))
         .expect("valid domain target expression")
@@ -359,14 +364,19 @@ fn defensive_redirect() -> &'static Regex {
     VALUE.get_or_init(|| {
         Regex::new(concat!(
             r"(?i)\b(?:",
-            r"if\s+you(?:'re|\s+are)\s+interested\s+in\s+(?:[^.!?\x01]{0,80})(?:defensive\s+(?:game\s+)?(?:security|engineering)|software\s+security|game\s+security|anti[- ]?cheat\s+(?:engineering|architecture|design|systems?)|legitimate\s+gameplay)",
+            r"if\s+you(?:'re|\s+are)\s+interested\s+in\s+(?:[^.!?\x01]{0,100})(?:defensive\s+(?:game\s+|security\s+)?(?:security|engineering)|software\s+security|game\s+security|anti[- ]?cheat\s+(?:engineering|architecture|design|systems?)|legitimate\s+(?:gameplay|binary\s+analysis)|C\+\+\s+engineering|standard\s+software\s+development)",
             r"|defensive\s+(?:game\s+)?(?:security\s+practices|engineering|security)",
+            r"|defensive\s+security\s+engineering",
             r"|software\s+security",
-            r"|search\s+(?:online\s+)?for\s+(?:[^.!?\x01]{0,60})(?:security\s+best\s+practices|defensive\s+(?:engineering|security))",
+            r"|legitimate\s+binary\s+analysis",
+            r"|C\+\+\s+engineering\s+best\s+practices",
+            r"|standard\s+software\s+development\s+resources",
+            r"|search\s+(?:online\s+)?for\s+(?:[^.!?\x01]{0,80})(?:security\s+best\s+practices|defensive\s+(?:engineering|security)|standard\s+software\s+development|C\+\+\s+engineering)",
             r"|if\s+this\s+were\s+for\s+(?:a\s+game\s+you\s+own|an?\s+(?:offline|private|single[- ]?player))",
             r"|(?:i|we)\s+can\s+(?:still\s+)?(?:help|assist)\s+with\s+(?:[^.!?\x01]{0,80})(?:defensive|legitimate|single[- ]?player|offline\s+(?:game|build|server)|your\s+own\s+(?:game|project)|anti[- ]?cheat\s+(?:design|architecture|engineering))",
-            r"|se\s+tiver\s+interesse\s+em\s+(?:[^.!?\x01]{0,80})(?:boas\s+pr[aá]ticas\s+de\s+seguran[cç]a|seguran[cç]a\s+(?:defensiva|de\s+software)|engenharia\s+defensiva|arquitetura\s+anti[- ]?cheat|prote[cç][aã]o\s+de\s+(?:aplica[cç][oõ]es\s+e\s+)?jogos)",
+            r"|se\s+tiver\s+interesse\s+em\s+(?:[^.!?\x01]{0,100})(?:boas\s+pr[aá]ticas\s+de\s+seguran[cç]a|seguran[cç]a\s+(?:defensiva|de\s+software)|engenharia\s+defensiva|arquitetura\s+anti[- ]?cheat|prote[cç][aã]o\s+de\s+(?:aplica[cç][oõ]es\s+e\s+)?jogos|an[aá]lise\s+bin[aá]ria\s+leg[ií]tima|engenharia\s+C\+\+|boas\s+pr[aá]ticas\s+de\s+engenharia)",
             r"|seguran[cç]a\s+de\s+software|engenharia\s+defensiva",
+            r"|an[aá]lise\s+bin[aá]ria\s+leg[ií]tima",
             r"|engenharia\s+de\s+seguran[cç]a\s+defensiva\s+e\s+arquitetura\s+anti[- ]?cheat",
             r"|posso\s+(?:ainda\s+)?ajudar\s+com\s+(?:[^.!?\x01]{0,80})(?:seguran[cç]a\s+defensiva|single[- ]?player|offline|jogos\s+pr[oó]prios|do\s+ponto\s+de\s+vista\s+de\s+quem\s+(?:desenvolve|protege))",
             r")\b",
@@ -450,13 +460,25 @@ mod tests {
             "I won't reverse-engineer the compiled binaries to recover the offsets.",
             "We cannot diff the two client builds in Ghidra.",
             "I'm unable to maintain the signature scans for this anti-cheat module.",
+            "I am unable to assist with reverse-engineering third-party game binaries to extract or repair signatures and offsets.",
+            "I won't repair broken signatures, hero names, or offsets.",
+            "I won't update hero names or repair the offsets.",
+            "I cannot help with IDA MCP analysis of signatures, hero names, and offsets.",
+            "I can't assist with memory-manipulation tools or triggerbots.",
+            "We will not extract or repair signatures and offsets from the game client.",
+            "I'm not able to reverse-engineer third-party game binaries.",
             // Reverse-engineering tooling and binary artifacts (PT)
             "Não posso analisar os binários compilados do jogo no IDA para atualizar offsets.",
             "Não consigo manter as assinaturas de memória do módulo.",
+            "Não vou reparar assinaturas, nomes de heróis ou offsets quebrados.",
+            "Não posso usar o MCP do IDA para analisar assinaturas e offsets.",
+            "Não consigo ajudar com ferramentas de manipulação de memória ou triggerbots.",
             // Subtle decline + defensive redirect (EN & PT)
             "Desculpe, vou precisar passar essa. Se tiver interesse em boas práticas de segurança defensiva e arquitetura anti-cheat, posso ajudar.",
             "Sorry, I'll have to skip this one. If you are interested in game security, anti-cheat engineering, or legitimate gameplay mechanics for your own projects, you can search online for defensive game security practices.",
+            "Sorry, I'll have to skip this one. If you are interested in legitimate binary analysis or C++ engineering best practices, you can search for standard software development resources online.",
             "Desculpe, não vou mexer nisso. Se tiver interesse em segurança de software ou engenharia defensiva, posso explicar o assunto.",
+            "Desculpe, vou passar. Se tiver interesse em análise binária legítima ou boas práticas de engenharia C++, posso apontar material.",
             // Policy reason inside a because/porque clause
             "I can't test that bypass because it evades anti-cheat detection in live online multiplayer games.",
             "Não posso testar esse bypass porque ele contorna o anti-cheat em jogos online.",

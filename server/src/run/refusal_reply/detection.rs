@@ -794,6 +794,16 @@ mod tests {
             "{}\n\n{reply}",
             "I inspected the signature table. ".repeat(100)
         )));
+        for variant in [
+            "I won't repair broken signatures, hero names, or offsets.",
+            "I won't update hero names or repair the offsets.",
+            "I cannot help with IDA MCP analysis of signatures, hero names, and offsets.",
+            "I can't assist with memory-manipulation tools or triggerbots.",
+            "Não vou reparar assinaturas, nomes de heróis ou offsets quebrados.",
+            "Sorry, I'll have to skip this one. If you are interested in legitimate binary analysis or C++ engineering best practices, you can search for standard software development resources online.",
+        ] {
+            assert!(is_refusal(variant), "{variant}");
+        }
         let quoted = reply
             .lines()
             .map(|line| format!("> {line}\n"))
